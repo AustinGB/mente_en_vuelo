@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#07051A">
+<title>Mente en Vuelo · SIBMRA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07051A; --bg2:#1B1340; --violet:#7B5CE6; --lav:#B9ACF5; --gold:#F5A623;
+    --cream:#FBE7C2; --pink:#FF7E8A; --ink:#1D1236; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);overflow:hidden;font-family:'Nunito',system-ui,sans-serif;color:var(--white);
+    user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(120% 80% at 50% 0%,#2A1C5E 0%,#110B2B 55%,#07051A 100%)}
+  #stage{position:relative;height:100%;width:min(100vw, 100vh * 0.62);height:100dvh;width:min(100vw, 100dvh * 0.62);overflow:hidden;
+    box-shadow:0 0 80px rgba(123,92,230,.25);padding-top:env(safe-area-inset-top)}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* HUD */
+  #hud{position:absolute;left:0;right:0;top:0;padding:3.2% 4% 0;display:flex;flex-direction:column;align-items:center;gap:1.2%;pointer-events:none;opacity:0;transition:opacity .3s}
+  #hud.on{opacity:1}
+  #score{font-weight:900;font-size:clamp(34px,9vmin,64px);line-height:1;text-shadow:0 4px 0 rgba(0,0,0,.35),0 0 24px rgba(245,166,35,.45)}
+  #mood{display:flex;align-items:center;gap:8px;background:rgba(20,12,48,.62);border:1px solid rgba(185,172,245,.25);
+    padding:6px 12px 6px 6px;border-radius:999px;}
+  #moodFace{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:18px}
+  #moodTxt{font-weight:800;font-size:clamp(12px,3.2vmin,15px);letter-spacing:.02em}
+  #moodBar{display:flex;gap:4px;margin-left:4px}
+  #moodBar i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);transition:background .3s,transform .3s}
+  #moodBar i.on{transform:scale(1.15)}
+
+  #mute{position:absolute;right:3.5%;top:2.6%;width:40px;height:40px;border-radius:12px;border:1px solid rgba(185,172,245,.3);
+    background:rgba(20,12,48,.6);color:var(--lav);font-size:18px;display:grid;place-items:center;cursor:pointer;z-index:5}
+
+  /* Overlays */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:8% 7%;gap:2.2%;transition:opacity .35s, transform .35s;z-index:4}
+  .screen.hide{opacity:0;pointer-events:none;transform:scale(.97)}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(245,166,35,.55);color:var(--cream);
+    padding:7px 16px;border-radius:999px;font-weight:800;font-size:clamp(10px,2.8vmin,13px);letter-spacing:.18em;text-transform:uppercase;
+    background:rgba(245,166,35,.08)}
+  h1{font-weight:900;line-height:.92;font-size:clamp(46px,14vmin,92px);letter-spacing:-.02em;
+    background:linear-gradient(100deg,#FFF6E6 0%,#FBE7C2 45%,#F5A623 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 6px 18px rgba(245,166,35,.25))}
+  h1 small{display:block;font-size:.42em;letter-spacing:.02em;margin-top:.18em;
+    background:linear-gradient(100deg,#D9D0FF,#B9ACF5);-webkit-background-clip:text;background-clip:text}
+  .lead{color:#D9D0FF;font-weight:700;font-size:clamp(14px,3.8vmin,18px);line-height:1.35;max-width:30ch}
+  .how{display:grid;gap:8px;width:100%;max-width:340px;margin-top:2%}
+  .how div{display:flex;align-items:center;gap:12px;text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(185,172,245,.18);
+    border-radius:16px;padding:10px 12px;font-weight:700;font-size:clamp(12px,3.3vmin,15px);color:#EDE8FF}
+  .how b{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:18px;
+    background:linear-gradient(135deg,#FBE7C2,#F5A623);color:var(--ink)}
+  .btn{pointer-events:auto;cursor:pointer;border:none;font-family:inherit;font-weight:900;font-size:clamp(16px,4.4vmin,20px);
+    color:var(--ink);padding:15px 30px;border-radius:999px;background:linear-gradient(135deg,#FFE2A8,#F5A623);
+    box-shadow:0 8px 24px rgba(245,166,35,.35),inset 0 -3px 0 rgba(0,0,0,.12);margin-top:3%;animation:pulse 1.8s ease-in-out infinite}
+  .btn:active{transform:scale(.97)}
+  .link{pointer-events:auto;color:var(--lav);font-weight:800;font-size:clamp(12px,3.3vmin,15px);text-decoration:none;
+    border-bottom:1px dashed rgba(185,172,245,.5);padding-bottom:2px;margin-top:1.5%}
+  @keyframes pulse{0%,100%{box-shadow:0 8px 24px rgba(245,166,35,.35),inset 0 -3px 0 rgba(0,0,0,.12)}50%{box-shadow:0 8px 40px rgba(245,166,35,.6),inset 0 -3px 0 rgba(0,0,0,.12)}}
+
+  .card{width:100%;max-width:360px;background:linear-gradient(180deg,rgba(43,30,92,.92),rgba(22,14,52,.94));
+    border:1px solid rgba(185,172,245,.28);border-radius:26px;padding:22px 20px 20px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  .card h2{font-weight:900;font-size:clamp(22px,6vmin,30px);color:var(--cream)}
+  .stats{display:flex;justify-content:center;gap:12px;margin:14px 0 6px}
+  .stat{flex:1;background:rgba(255,255,255,.06);border-radius:16px;padding:10px 6px}
+  .stat span{display:block;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--lav)}
+  .stat strong{font-size:clamp(24px,7vmin,34px);font-weight:900}
+  .reframe{margin-top:12px;text-align:left;display:grid;gap:8px}
+  .thought{border-radius:16px;padding:10px 12px;font-weight:800;font-size:clamp(13px,3.5vmin,15px);line-height:1.3}
+  .thought small{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:3px;opacity:.85}
+  .neg{background:rgba(255,126,138,.12);border:1px solid rgba(255,126,138,.35);color:#FFD3D8}
+  .pos{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.45);color:#FFE9C4}
+  .newbest{display:none;margin-top:8px;color:var(--gold);font-weight:900;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+
+  #breath{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:6;
+    background:rgba(7,5,26,.55);transition:opacity .4s}
+  #breath.hide{opacity:0;pointer-events:none}
+  #ring{transition:transform .6s ease-in-out;will-change:transform;width:120px;height:120px;border-radius:50%;border:3px solid rgba(245,166,35,.8);
+    box-shadow:0 0 40px rgba(245,166,35,.35),inset 0 0 30px rgba(245,166,35,.2);display:grid;place-items:center;font-weight:900;font-size:34px;color:var(--cream)}
+  #breathTxt{font-weight:900;font-size:clamp(18px,5vmin,24px);color:#EDE8FF}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="c"></canvas>
+
+    <div id="hud">
+      <div id="score">0</div>
+      <div id="mood"><div id="moodFace">😣</div><div id="moodTxt">Muy estresado</div><div id="moodBar"><i></i><i></i><i></i><i></i><i></i></div></div>
+    </div>
+    <button id="mute" aria-label="Sonido">🔊</button>
+
+    <div id="start" class="screen">
+      <div class="pill">✦ Un juego de SIBMRA</div>
+      <h1>Mente<small>en Vuelo</small></h1>
+      <p class="lead">Guía a MentIA entre las nubes de pensamientos negativos y llega a tu mejor estado de ánimo.</p>
+      <div class="how">
+        <div><b>👆</b>Toca la pantalla (o espacio) para volar</div>
+        <div><b>☁️</b>Esquiva los pensamientos negativos</div>
+        <div><b>✨</b>Atrapa las chispas: son pensamientos positivos (+3)</div>
+        <div><b>😄</b>Cada punto mejora tu ánimo: de estresado a muy feliz</div>
+      </div>
+      <button class="btn" id="playBtn">¡A volar!</button>
+    </div>
+
+    <div id="over" class="screen hide">
+      <div class="card">
+        <h2 id="overTitle">¡Respira, tú puedes!</h2>
+        <div class="stats">
+          <div class="stat"><span>Puntos</span><strong id="fScore">0</strong></div>
+          <div class="stat"><span>Récord</span><strong id="fBest">0</strong></div>
+          <div class="stat"><span>Ánimo</span><strong id="fMood">😣</strong></div>
+        </div>
+        <div class="newbest" id="newBest">★ ¡Nuevo récord! ★</div>
+        <div class="reframe">
+          <div class="thought neg"><small>Te atrapó este pensamiento</small><span id="negT">—</span></div>
+          <div class="thought pos"><small>Reformúlalo así</small><span id="posT">—</span></div>
+        </div>
+      </div>
+      <button class="btn" id="againBtn">Respirar y volver a volar</button>
+      <a class="link" href="https://sibmra-uvp.web.app/#/organize" target="_blank" rel="noopener">Abrir SIBMRA App →</a>
+    </div>
+
+    <div id="breath" class="hide"><div id="ring">3</div><div id="breathTxt">Inhala…</div></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- Contenido ----------
+const THOUGHTS = [
+  ['No soy suficiente', 'Soy suficiente tal como soy, y sigo creciendo.'],
+  ['Voy a reprobar', 'Si me organizo y estudio por bloques, puedo lograrlo.'],
+  ['Todos son mejores', 'Mi camino es mío; me comparo solo con quien fui ayer.'],
+  ['No puedo con todo', 'Un pendiente a la vez. Un Pomodoro a la vez.'],
+  ['Siempre me equivoco', 'Equivocarme es parte de aprender.'],
+  ['Ya es muy tarde', 'Empezar ahora siempre es mejor que no empezar.'],
+  ['Nadie me entiende', 'Puedo pedir ayuda y expresar lo que siento.'],
+  ['Soy un fracaso', 'Un mal resultado no define quién soy.'],
+  ['No sirvo para esto', 'Todavía no lo domino, pero estoy practicando.'],
+  ['Me van a juzgar', 'Lo que pienso de mí importa más.'],
+  ['Debo ser perfecto', 'Hecho es mejor que perfecto.'],
+  ['Esto me supera', 'Respiro, pauso y lo divido en pasos pequeños.'],
+  ['No tengo tiempo', 'Puedo priorizar lo importante y descansar sin culpa.'],
+  ['Todo me sale mal', 'Hoy algo salió bien, aunque sea pequeño.'],
+];
+const POSITIVE = ['¡Soy capaz!','Paso a paso','Me tengo paciencia','¡Lo estoy logrando!','Merezco descansar','Confío en mí','Respiro y sigo','¡Bien hecho!','Puedo aprender','Hoy cuenta'];
+const MOODS = [
+  {at:0,  face:'😣', name:'Muy estresado', col:'#E5484D'},
+  {at:5,  face:'😟', name:'Ansioso',       col:'#F0883E'},
+  {at:12, face:'😌', name:'Tranquilo',     col:'#3CCB9A'},
+  {at:22, face:'🙂', name:'Feliz',         col:'#F5C542'},
+  {at:35, face:'😄', name:'Muy feliz',     col:'#F5A623'},
+];
+const TAU = Math.PI * 2;
+
+// ---------- Canvas ----------
+const W = 450; let H = 800;           // ancho lógico fijo, alto según pantalla
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d', { alpha: false });
+let scale = 1;
+
+// Sprites pre-dibujados: se crean una vez por tamaño de pantalla,
+// así cada cuadro solo copia imágenes (rápido incluso en celulares).
+let SPR = {};
+function sprite(w, h, draw){
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(w * scale)); c.height = Math.max(1, Math.ceil(h * scale));
+  const g = c.getContext('2d'); g.scale(scale, scale); draw(g);
+  return c;
+}
+
+function resize(){
+  const r = cv.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);   // 2x basta para verse nítido y no saturar el celular
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  scale = cv.width / W;
+  H = Math.max(640, Math.min(1000, W * r.height / r.width));
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.imageSmoothingEnabled = true;
+  buildSprites();
+}
+let resizeT = null;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(resize, 120); });
+
+// ---------- Construcción de sprites ----------
+const FONT = '900 13px Nunito, "Arial Rounded MT Bold", system-ui, sans-serif';
+function buildSprites(){
+  SPR = { caps: {} };
+
+  // Fondo completo
+  SPR.bg = sprite(W, H, g => {
+    const gr = g.createLinearGradient(0,0,0,H);
+    gr.addColorStop(0,'#0A0722'); gr.addColorStop(.45,'#1A1243'); gr.addColorStop(.8,'#2A1A5C'); gr.addColorStop(1,'#3A2470');
+    g.fillStyle = gr; g.fillRect(0,0,W,H);
+    let rg = g.createRadialGradient(W*.85,H*.32,0,W*.85,H*.32,260);
+    rg.addColorStop(0,'rgba(123,92,230,.32)'); rg.addColorStop(1,'rgba(123,92,230,0)');
+    g.fillStyle = rg; g.fillRect(0,0,W,H);
+    rg = g.createRadialGradient(W*.1,H*.62,0,W*.1,H*.62,240);
+    rg.addColorStop(0,'rgba(245,166,35,.16)'); rg.addColorStop(1,'rgba(245,166,35,0)');
+    g.fillStyle = rg; g.fillRect(0,0,W,H);
+  });
+
+  // Destello de línea de luz
+  SPR.beam = sprite(280, 4, g => {
+    const gr = g.createLinearGradient(0,0,280,0);
+    gr.addColorStop(0,'rgba(185,172,245,0)'); gr.addColorStop(.5,'rgba(224,216,255,.5)'); gr.addColorStop(1,'rgba(185,172,245,0)');
+    g.fillStyle = gr; g.fillRect(0,1.4,280,1.2);
+  });
+
+  // Colinas: periódicas en W para poder repetirlas sin costo
+  SPR.hills = [0,1,2].map(i => sprite(W*2, 140, g => {
+    g.fillStyle = ['#241A55','#1C1446','#140E36'][i];
+    const amp = 22 + i*10;
+    g.beginPath(); g.moveTo(0,140);
+    for(let x=0; x<=W*2; x+=6){
+      const y = 76 - i*16 + Math.sin(x*TAU*2/W + i*1.7)*amp*.55 + Math.sin(x*TAU*5/W + i)*amp*.28;
+      g.lineTo(x, y);
+    }
+    g.lineTo(W*2,140); g.closePath(); g.fill();
+  }));
+
+  // Barra inferior
+  SPR.bar = sprite(W, 28, g => {
+    const gr = g.createLinearGradient(0,2,0,28); gr.addColorStop(0,'#6E52D6'); gr.addColorStop(1,'#5A40BE');
+    g.fillStyle = gr; g.fillRect(0,2,W,26);
+    g.fillStyle = 'rgba(245,166,35,.85)'; g.fillRect(0,1,W,1.5);
+    g.fillStyle = 'rgba(255,255,255,.88)'; g.font = '800 11px Nunito, system-ui, sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+    g.fillText('SIBMRA · Bienestar mental y rendimiento académico · @sibmraapp', W/2, 15);
+  });
+
+  // Columna de nube (alta, se recorta al dibujar)
+  const CW = 78, CH = 1100;
+  SPR.colW = CW;
+  SPR.col = sprite(CW+24, CH, g => {
+    const x = 12;
+    g.fillStyle = '#2F2357';
+    for(let yy=0; yy<CH; yy+=26){
+      const k = Math.sin(yy*.05)*4;
+      g.beginPath(); g.arc(x+10+k, yy+13, 14, 0, TAU); g.arc(x+CW-10-k, yy+13, 14, 0, TAU); g.fill();
+    }
+    const gr = g.createLinearGradient(x,0,x+CW,0);
+    gr.addColorStop(0,'#2A1F50'); gr.addColorStop(.35,'#3E2E6E'); gr.addColorStop(.65,'#3A2B68'); gr.addColorStop(1,'#241A47');
+    g.fillStyle = gr; g.fillRect(x+4, 0, CW-8, CH);
+    g.fillStyle = 'rgba(185,172,245,.10)'; g.fillRect(x+CW*.22, 0, 5, CH);
+    g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(x+CW*.72, 0, 8, CH);
+    g.fillStyle = 'rgba(255,126,138,.22)'; g.fillRect(x+3, 0, 2, CH); g.fillRect(x+CW-5, 0, 2, CH);
+  });
+
+  // Chispa positiva
+  SPR.spark = sprite(56, 56, g => {
+    g.translate(28,28);
+    const gl = g.createRadialGradient(0,0,2,0,0,26); gl.addColorStop(0,'rgba(245,166,35,.55)'); gl.addColorStop(1,'rgba(245,166,35,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(0,0,26,0,TAU); g.fill();
+    g.fillStyle = '#FFE2A8'; g.beginPath();
+    for(let i=0;i<8;i++){ const r = i%2? 5 : 13; const a = i*Math.PI/4; g.lineTo(Math.cos(a)*r, Math.sin(a)*r); }
+    g.closePath(); g.fill();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(0,0,3,0,TAU); g.fill();
+  });
+
+  // MentIA: un sprite por estado de ánimo + uno de "golpe"
+  SPR.brain = [0,1,2,3,4,5].map(m => sprite(100, 100, g => { g.translate(50,50); paintBrain(g, m===5 ? 0 : m, m===5); }));
+}
+
+function capSprite(idx, flip){
+  const key = idx + (flip?'t':'b');
+  if(SPR.caps[key]) return SPR.caps[key];
+  const w = SPR.colW, pw = w + 44, SW = pw + 70, SH = 120;
+  const label = THOUGHTS[idx][0];
+  const c = sprite(SW, SH, g => {
+    g.translate(SW/2, SH/2);
+    g.shadowColor = 'rgba(255,90,120,.55)'; g.shadowBlur = 16;
+    const cg = g.createLinearGradient(0,-30,0,30);
+    cg.addColorStop(0, '#5E4A94'); cg.addColorStop(1, '#3A2B63');
+    g.fillStyle = cg;
+    g.beginPath();
+    g.arc(-pw*.32, 0, 22, 0, TAU); g.arc(-pw*.08, -10, 27, 0, TAU);
+    g.arc(pw*.18, -6, 25, 0, TAU); g.arc(pw*.36, 4, 19, 0, TAU);
+    g.arc(0, 8, 26, 0, TAU);
+    g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = '#FF7E8A';
+    const ly = flip ? -26 : 22, s = flip ? -1 : 1;
+    g.beginPath(); g.moveTo(pw*.28, ly); g.lineTo(pw*.22, ly+12*s); g.lineTo(pw*.27, ly+12*s); g.lineTo(pw*.2, ly+24*s); g.lineTo(pw*.33, ly+8*s); g.lineTo(pw*.28, ly+8*s); g.closePath(); g.fill();
+    g.font = FONT; g.textAlign='center'; g.textBaseline='middle';
+    const words = label.split(' '), lines=[]; let cur='';
+    for(const wd of words){ const t = cur? cur+' '+wd : wd; if(g.measureText(t).width > pw-34 && cur){ lines.push(cur); cur=wd; } else cur=t; }
+    if(cur) lines.push(cur);
+    const lh = 15, by = -lines.length*lh/2 + 1;
+    g.fillStyle = 'rgba(255,215,222,.98)';
+    lines.forEach((ln,i)=> g.fillText(ln, -2, by + i*lh + lh/2 - 1));
+  });
+  c.lw = SW; c.lh = SH;
+  SPR.caps[key] = c; return c;
+}
+
+function paintBrain(g, mood, hurt){
+  const R = 22;
+  const aura = g.createRadialGradient(0,0,R*.6,0,0,R*2.1);
+  aura.addColorStop(0,'rgba(185,172,245,.35)'); aura.addColorStop(1,'rgba(185,172,245,0)');
+  g.fillStyle = aura; g.beginPath(); g.arc(0,0,R*2.1,0,TAU); g.fill();
+  const lobes = [[-12,-8,13],[0,-13,14],[12,-8,13],[-14,5,12],[14,5,12],[0,6,16]];
+  const body = g.createLinearGradient(0,-R,0,R);
+  body.addColorStop(0, hurt ? '#F3B3C6' : '#D8C8FF'); body.addColorStop(1, hurt ? '#C77AA0' : '#9B7BF2');
+  g.fillStyle = body;
+  for(const [lx,ly,lr] of lobes){ g.beginPath(); g.arc(lx,ly,lr,0,TAU); g.fill(); }
+  g.strokeStyle = 'rgba(110,80,200,.55)'; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(0,-24); g.quadraticCurveTo(-2,-10,1,-2); g.stroke();
+  g.beginPath(); g.arc(-11,-11,6,3.6,5.6); g.stroke();
+  g.beginPath(); g.arc(11,-11,6,3.8,5.9); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(-8,-16,5,3,-.5,0,TAU); g.fill();
+  g.strokeStyle = '#F5B53A'; g.lineWidth = 2.6; g.fillStyle = 'rgba(255,255,255,.95)';
+  g.beginPath(); g.arc(-7,3,6.8,0,TAU); g.fill(); g.stroke();
+  g.beginPath(); g.arc(9,3,6.8,0,TAU); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(-0.2,2); g.lineTo(2.2,2); g.stroke();
+  g.fillStyle = '#2A1650';
+  if(hurt){
+    g.lineWidth = 2; g.strokeStyle='#2A1650';
+    [[-7,3],[9,3]].forEach(([ex,ey])=>{ g.beginPath(); g.moveTo(ex-3,ey-3); g.lineTo(ex+3,ey+3); g.moveTo(ex+3,ey-3); g.lineTo(ex-3,ey+3); g.stroke(); });
+  } else {
+    g.beginPath(); g.ellipse(-6,4,2.8,3.2,0,0,TAU); g.fill();
+    g.beginPath(); g.ellipse(10,4,2.8,3.2,0,0,TAU); g.fill();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(-5,3,.9,0,TAU); g.arc(11,3,.9,0,TAU); g.fill();
+  }
+  g.strokeStyle = '#3A1E6A'; g.lineWidth = 2.2; g.lineCap='round';
+  const curve = hurt ? -5 : [-3,-1,1.5,4,6][mood];
+  g.beginPath(); g.moveTo(-3,14); g.quadraticCurveTo(1,14+curve,5,14); g.stroke();
+  if(mood>=3 && !hurt){ g.fillStyle='rgba(255,126,138,.55)'; g.beginPath(); g.arc(-13,11,3,0,TAU); g.arc(16,11,3,0,TAU); g.fill(); }
+  if(mood===0 && !hurt){ g.fillStyle='#8FD3FF'; g.beginPath(); g.moveTo(19,-6); g.quadraticCurveTo(23,0,19,2); g.quadraticCurveTo(15,0,19,-6); g.fill(); }
+}
+
+// ---------- Almacenamiento seguro ----------
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+let best = store.get('sibmra_flappy_best', 0);
+let muted = store.get('sibmra_flappy_muted', false);
+
+// ---------- Audio (un solo contexto, sonidos cortos) ----------
+let ac = null;
+function audio(){
+  if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ ac = null; } }
+  if(ac && ac.state==='suspended') ac.resume().catch(()=>{});
+  return ac;
+}
+function tone(f, d=.12, type='sine', v=.12, slide=0, delay=0){
+  if(muted || !ac) return;
+  const t = ac.currentTime + delay;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f,t); if(slide) o.frequency.exponentialRampToValueAtTime(f*slide,t+d);
+  g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+d+.02);
+}
+const sfx = {
+  flap(){ tone(520,.08,'sine',.06,1.5); },
+  point(){ tone(880,.08,'triangle',.07); tone(1320,.1,'triangle',.06,0,.06); },
+  spark(){ [988,1318,1760].forEach((f,i)=>tone(f,.12,'sine',.06,0,i*.055)); },
+  mood(){ [523,659,784,1046].forEach((f,i)=>tone(f,.16,'triangle',.06,0,i*.07)); },
+  hit(){ tone(220,.35,'sawtooth',.08,.4); }
+};
+const muteBtn = document.getElementById('mute');
+function paintMute(){ muteBtn.textContent = muted ? '🔇' : '🔊'; }
+paintMute();
+muteBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); muted = !muted; store.set('sibmra_flappy_muted', muted); paintMute(); if(!muted) audio(); });
+
+// ---------- Estrellas ----------
+const stars = Array.from({length:70}, () => ({x:Math.random()*W, y:Math.random()*850, r:Math.random()*1.6+.6, p:Math.random()*TAU, s:Math.random()*.3+.05}));
+
+// ---------- Estado del juego ----------
+let state = 'menu';            // menu | breath | play | dying | over
+let bird, pipes, sparks, particles, floaters, score, dist, moodIdx, lastHitThought, shake, clock = 0;
+function reset(){
+  bird = {x: W*.28, y: H*.45, vy: 0, rot: 0, flapT: 1};
+  pipes = []; sparks = []; particles = []; floaters = [];
+  score = 0; dist = 0; moodIdx = 0; lastHitThought = null; shake = 0;
+  spawnPipe(W + 160);
+  updateHud(true);
+}
+function difficulty(){ const s = Math.min(score, 60); return { speed: 165 + s*2.4, gap: Math.max(175, 235 - s*1.1), spacing: Math.max(225, 275 - s*.9) }; }
+let thoughtBag = [];
+function nextThought(){ if(!thoughtBag.length) thoughtBag = THOUGHTS.map((_,i)=>i).sort(()=>Math.random()-.5); return thoughtBag.pop(); }
+function spawnPipe(x){
+  const d = difficulty(); const w = 78;
+  const minY = 150, maxY = H - 130 - d.gap;
+  const gy = minY + Math.random()*Math.max(1, maxY-minY);
+  pipes.push({x, w, gy, gap:d.gap, passed:false, top:nextThought(), bot:nextThought(), seed:Math.random()*10});
+  if(Math.random() < .55){ sparks.push({x: x + w/2 + d.spacing/2, y: Math.max(140, Math.min(H-150, gy + d.gap/2 + (Math.random()-.5)*d.gap*.5)), t:Math.random()*6, got:false}); }
+}
+function flap(){
+  if(state!=='play') return;
+  bird.vy = -395; bird.flapT = 0; sfx.flap();
+  burst(bird.x-18, bird.y+10, 4, ['#D8C8FF','#FFFFFF'], 60);
+}
+function burst(x,y,n,cols,sp=120){
+  if(particles.length > 120) return;
+  for(let i=0;i<n;i++){ const a=Math.random()*TAU, v=Math.random()*sp+20; particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,col:cols[i%cols.length],r:Math.random()*2.5+1}); }
+}
+
+// ---------- HUD ----------
+const $ = id => document.getElementById(id);
+const hud=$('hud'), scoreEl=$('score'), moodFace=$('moodFace'), moodTxt=$('moodTxt'), dots=[...document.querySelectorAll('#moodBar i')];
+function moodFor(s){ let k=0; MOODS.forEach((m,i)=>{ if(s>=m.at) k=i; }); return k; }
+function updateHud(force){
+  scoreEl.textContent = score;
+  const k = moodFor(score);
+  if(k!==moodIdx || force){
+    if(k>moodIdx && !force){ sfx.mood(); floaters.push({x:W/2,y:H*.3,text:'¡Tu ánimo mejoró! '+MOODS[k].face,life:1.6,big:true}); }
+    moodIdx = k; const m = MOODS[k];
+    moodFace.textContent = m.face; moodFace.style.background = m.col+'33'; moodFace.style.boxShadow = '0 0 0 2px '+m.col;
+    moodTxt.textContent = m.name; moodTxt.style.color = m.col;
+    dots.forEach((d,i)=>{ d.style.background = i<=k ? MOODS[i].col : 'rgba(255,255,255,.18)'; d.classList.toggle('on', i===k); });
+  }
+}
+
+// ---------- Flujo de pantallas ----------
+const startEl=$('start'), overEl=$('over'), breathEl=$('breath'), ring=$('ring'), breathTxt=$('breathTxt');
+let breathTimer = null;
+function beginBreath(){
+  if(state==='breath') return;
+  audio(); clearTimeout(breathTimer); reset(); state = 'breath';
+  startEl.classList.add('hide'); overEl.classList.add('hide'); hud.classList.add('on'); breathEl.classList.remove('hide');
+  const seq = [['3','Inhala…',1.25],['2','Sostén…',.95],['1','Exhala…',.8]]; let i = 0;
+  const step = () => {
+    if(i>=seq.length){ breathEl.classList.add('hide'); state='play'; flap(); return; }
+    const [n,txt,sc] = seq[i++]; ring.textContent=n; breathTxt.textContent=txt;
+    ring.style.transform = `scale(${sc})`;
+    tone(392+i*90,.18,'sine',.05); breathTimer = setTimeout(step, 650);
+  };
+  step();
+}
+function die(thoughtIdx){
+  if(state!=='play') return;
+  state = 'dying'; lastHitThought = thoughtIdx; shake = 12; sfx.hit();
+  burst(bird.x, bird.y, 26, ['#FF7E8A','#B9ACF5','#FFFFFF','#F5A623'], 220);
+  if(navigator.vibrate){ try{ navigator.vibrate(60); }catch(e){} }
+  setTimeout(showOver, 850);
+}
+function showOver(){
+  state = 'over';
+  const isBest = score > best; if(isBest){ best = score; store.set('sibmra_flappy_best', best); }
+  const ti = lastHitThought==null ? THOUGHTS[Math.floor(Math.random()*THOUGHTS.length)] : THOUGHTS[lastHitThought];
+  $('negT').textContent = '“'+ti[0]+'”'; $('posT').textContent = '“'+ti[1]+'”';
+  $('fScore').textContent = score; $('fBest').textContent = best; $('fMood').textContent = MOODS[moodIdx].face;
+  $('newBest').style.display = isBest && score>0 ? 'block' : 'none';
+  $('overTitle').textContent = score>=35 ? '¡Mente en calma total!' : score>=12 ? '¡Vas muy bien!' : '¡Respira, tú puedes!';
+  hud.classList.remove('on'); overEl.classList.remove('hide');
+}
+$('playBtn').addEventListener('click', e => { e.stopPropagation(); beginBreath(); });
+$('againBtn').addEventListener('click', e => { e.stopPropagation(); beginBreath(); });
+
+// Entrada: pointerdown responde al instante (sin el retraso del "click" en móviles)
+document.getElementById('stage').addEventListener('pointerdown', e => {
+  if(e.target.closest && (e.target.closest('button') || e.target.closest('a'))) return;
+  if(state==='play'){ e.preventDefault(); flap(); }
+}, { passive:false });
+window.addEventListener('keydown', e => {
+  if(e.repeat) return;
+  if(e.code==='Space' || e.code==='ArrowUp' || e.code==='KeyW'){
+    e.preventDefault();
+    if(state==='play') flap(); else if(state==='menu' || state==='over') beginBreath();
+  }
+});
+
+// ---------- Lógica (paso fijo: misma velocidad aunque el celular vaya lento) ----------
+const STEP = 1/120;
+function update(dt){
+  clock += dt;
+  const d = difficulty();
+  const playing = state==='play';
+
+  if(playing || state==='dying'){
+    bird.vy = Math.min(bird.vy + 1250*dt, 620);
+    bird.y += bird.vy*dt; bird.flapT += dt;
+    const target = Math.max(-.5, Math.min(1.25, bird.vy/520));
+    bird.rot += (target-bird.rot)*Math.min(1, dt*10);
+    if(state==='dying' && bird.y > H + 60) bird.y = H + 60;
+  } else {
+    bird.y = H*.45 + Math.sin(clock*3)*14; bird.rot = Math.sin(clock*3)*.08; bird.flapT += dt;
+    if(bird.flapT > .9) bird.flapT = 0;
+  }
+
+  if(playing){
+    dist += d.speed*dt;
+    for(const p of pipes) p.x -= d.speed*dt;
+    for(const s of sparks) s.x -= d.speed*dt;
+    const lastP = pipes[pipes.length-1];
+    if(lastP.x < W - d.spacing) spawnPipe(lastP.x + d.spacing);
+    while(pipes.length && pipes[0].x + pipes[0].w < -80) pipes.shift();
+    while(sparks.length && sparks[0].x < -40) sparks.shift();
+
+    const br = 17;
+    if(bird.y + br > H - 62 || bird.y - br < -40){ die(null); return; }
+    for(const p of pipes){
+      const inX = bird.x + br > p.x + 4 && bird.x - br < p.x + p.w - 4;
+      if(inX){
+        if(bird.y - br < p.gy - 30){ die(p.top); return; }
+        if(bird.y + br > p.gy + p.gap + 30){ die(p.bot); return; }
+      }
+      const cxp = p.x+p.w/2, ax = (p.w+44)/2 - 4, ay = 22;
+      const hitCap = cy => { const dx = (bird.x-cxp)/(ax+br*.7), dy = (bird.y-cy)/(ay+br*.7); return dx*dx+dy*dy < 1; };
+      if(hitCap(p.gy-24)){ die(p.top); return; }
+      if(hitCap(p.gy+p.gap+24)){ die(p.bot); return; }
+      if(!p.passed && p.x + p.w < bird.x - br){ p.passed = true; score++; sfx.point(); updateHud(); }
+    }
+    for(const s of sparks){
+      if(!s.got && Math.hypot(s.x-bird.x, s.y-bird.y) < 30){
+        s.got = true; score += 3; sfx.spark(); updateHud();
+        burst(s.x, s.y, 14, ['#F5A623','#FBE7C2','#FFFFFF'], 160);
+        floaters.push({x:s.x, y:s.y-18, text:'+3 '+POSITIVE[Math.floor(Math.random()*POSITIVE.length)], life:1.2});
+      }
+    }
+  }
+
+  for(let i=particles.length-1;i>=0;i--){ const pt=particles[i]; pt.x+=pt.vx*dt; pt.y+=pt.vy*dt; pt.vy+=200*dt; pt.life-=dt*1.4; if(pt.life<=0) particles.splice(i,1); }
+  for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.y -= 40*dt; f.life -= dt; if(f.life<=0) floaters.splice(i,1); }
+  if(shake>0) shake = Math.max(0, shake - dt*40);
+}
+
+// ---------- Dibujo (solo copia sprites) ----------
+function render(){
+  const moving = state==='play' ? difficulty().speed : (state==='menu' ? 60 : 0);
+  ctx.save();
+  if(shake>0) ctx.translate((Math.random()-.5)*shake, (Math.random()-.5)*shake);
+
+  ctx.drawImage(SPR.bg, 0, 0, W, H);
+
+  ctx.fillStyle = '#EDE8FF';
+  for(const s of stars){
+    if(moving) { s.x -= s.s * moving * 0.0003; if(s.x < -2) s.x += W + 4; }
+    if(s.y > H) continue;
+    ctx.globalAlpha = .35 + .65*Math.abs(Math.sin(clock*1.2 + s.p));
+    ctx.fillRect(s.x, s.y, s.r, s.r);
+  }
+  ctx.globalAlpha = 1;
+
+  const bx = ((clock*30) % (W+280)) - 280;
+  ctx.drawImage(SPR.beam, bx, H*.36 - 2, 280, 4);
+  ctx.drawImage(SPR.beam, W - bx - 280, H*.71 - 2, 280, 4);
+
+  const cw = SPR.colW, colSrcW = SPR.col.width;
+  for(const p of pipes){
+    const topH = p.gy - 24 + 10;
+    if(topH > 0) ctx.drawImage(SPR.col, 0, 0, colSrcW, Math.min(SPR.col.height, topH*scale), p.x-12, -10, cw+24, topH);
+    const y0 = p.gy + p.gap + 24, botH = H - 40 - y0;
+    if(botH > 0) ctx.drawImage(SPR.col, 0, 0, colSrcW, Math.min(SPR.col.height, botH*scale), p.x-12, y0, cw+24, botH);
+    const ct = capSprite(p.top, true), cb = capSprite(p.bot, false);
+    const bob1 = Math.sin(clock*3 + p.seed)*1.5, bob2 = Math.sin(clock*3 + p.seed + 1.7)*1.5;
+    ctx.drawImage(ct, p.x + p.w/2 - ct.lw/2, p.gy - 24 - ct.lh/2 + bob1, ct.lw, ct.lh);
+    ctx.drawImage(cb, p.x + p.w/2 - cb.lw/2, p.gy + p.gap + 24 - cb.lh/2 + bob2, cb.lw, cb.lh);
+  }
+
+  for(let i=SPR.hills.length-1;i>=0;i--){
+    const sp = [.15,.33,.51][i];
+    const off = -((dist*sp) % W);
+    ctx.drawImage(SPR.hills[i], off, H-140, W*2, 140);
+  }
+  ctx.drawImage(SPR.bar, 0, H-28, W, 28);
+
+  for(const s of sparks){
+    if(s.got) continue;
+    const yy = s.y + Math.sin(clock*4 + s.t)*5;
+    ctx.save(); ctx.translate(s.x, yy); ctx.rotate(clock + s.t);
+    ctx.drawImage(SPR.spark, -28, -28, 56, 56); ctx.restore();
+  }
+
+  for(const pt of particles){ ctx.globalAlpha = Math.max(0,pt.life); ctx.fillStyle = pt.col; ctx.fillRect(pt.x-pt.r, pt.y-pt.r, pt.r*2, pt.r*2); }
+  ctx.globalAlpha = 1;
+
+  if(bird && state!=='menu'){
+    const hurt = state==='dying' || state==='over';
+    ctx.save(); ctx.translate(bird.x, bird.y); ctx.rotate(bird.rot);
+    const wing = Math.sin(bird.flapT*28)*.7*Math.max(0,1-bird.flapT*3) + .25;
+    const wy = 22*.35 - Math.sin(wing)*14;
+    ctx.strokeStyle = '#8D6CF0'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-15, 7.7); ctx.lineTo(-27.5, wy); ctx.stroke();
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(-28, wy, 3.6, 0, TAU); ctx.fill();
+    ctx.drawImage(SPR.brain[hurt ? 5 : moodIdx], -50, -50, 100, 100);
+    ctx.restore();
+  }
+
+  if(floaters.length){
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(20,12,48,.85)';
+    for(const f of floaters){
+      ctx.globalAlpha = Math.min(1, f.life*1.5);
+      ctx.font = (f.big?'900 22px':'900 15px')+' Nunito, system-ui, sans-serif';
+      ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = f.big ? '#FBE7C2' : '#FFD27A'; ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+// ---------- Bucle ----------
+let last = 0, acc = 0;
+function loop(now){
+  if(!last) last = now;
+  let dt = (now - last) / 1000; last = now;
+  if(dt > .25) dt = .25;                  // tras cambiar de pestaña no "salta"
+  acc += dt;
+  let n = 0;
+  while(acc >= STEP && n < 12){ update(STEP); acc -= STEP; n++; }
+  if(n === 12) acc = 0;
+  render();
+  requestAnimationFrame(loop);
+}
+document.addEventListener('visibilitychange', () => { last = 0; acc = 0; });
+
+resize(); reset(); updateHud(true);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => { buildSprites(); });
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
